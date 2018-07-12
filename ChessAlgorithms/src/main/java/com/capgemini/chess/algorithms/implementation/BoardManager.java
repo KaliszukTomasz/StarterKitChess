@@ -1,5 +1,6 @@
 package com.capgemini.chess.algorithms.implementation;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -273,13 +274,16 @@ public class BoardManager {
 		int cordXTo = myMove.getTo().getX();
 		int cordYTo = myMove.getTo().getY();
 		
-		if(getBoard().getPieceAt(myMove.getTo()).getType()==path.calculatePath()[cordXTo][cordYTo]){
-			return myMove;			
-		}
-		//path.calculatePath()
+		ArrayList<Coordinate> newList = path.filterPathsInBoardDimension(path.calculatePath());
 		
 		
-		return null;
+	// if(getBoard().getPieceAt(myMove.getTo()).getType()==path.calculatePath()[cordXTo][cordYTo]){
+	// return myMove;
+	// }
+	// path.calculatePath()
+
+	return null;
+
 	}
 
 	private boolean isKingInCheck(Color kingColor) {
