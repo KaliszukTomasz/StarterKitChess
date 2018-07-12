@@ -11,6 +11,7 @@ import com.capgemini.chess.algorithms.data.enums.MoveType;
 import com.capgemini.chess.algorithms.data.enums.Piece;
 import com.capgemini.chess.algorithms.data.enums.PieceType;
 import com.capgemini.chess.algorithms.data.generated.Board;
+import com.capgemini.chess.algorithms.data.generated.MovesPath;
 import com.capgemini.chess.algorithms.implementation.exceptions.InvalidMoveException;
 import com.capgemini.chess.algorithms.implementation.exceptions.KingInCheckException;
 
@@ -233,7 +234,51 @@ public class BoardManager {
 
 	private Move validateMove(Coordinate from, Coordinate to) throws InvalidMoveException, KingInCheckException {
 
-		// TODO please add implementation here
+		// TODO please add implementation here tutaj b
+		/*
+		 * 1. Pobieramy jaka figura stoi na polu from 2. Sprawdzamy co stoi na
+		 * cordinate to 3. Sprawdzamy wedłuch schematu poruszania się danej
+		 * figury, czy dane pole jest osiągalne Z funkcji musimy otrzymać
+		 * tablicę jak board, na podstawie porównania naszego cordTo z tą
+		 * tablicą będziemy wiedzieli, czy tam moze się poruszać 4. Sprawdzamy,
+		 * czy nie będzie króla własnego pod szachem
+		 */
+		Move myMove = new Move();
+		myMove.setFrom(from);
+		myMove.setTo(to);
+		myMove.setMovedPiece(getBoard().getPieceAt(from));
+		
+		PieceType pieceType = myMove.getMovedPiece().getType();
+		Color colorFrom = myMove.getMovedPiece().getColor();
+		
+		
+		// sprawdzamy, czy ruch jest mozliwy pod względem zajętości pola
+		if (myMove.getFrom().equals(null)) {
+			throw new InvalidMoveException("Place FROM is null");
+		}
+		if (myMove.getTo().equals(null)) {
+			myMove.setType(MoveType.CAPTURE);
+		} else {
+			if (getBoard().getPieceAt(to).getColor().equals(colorFrom)) {
+				throw new InvalidMoveException("This is a Piece in the same color!!!");
+			} else {
+				myMove.setType(MoveType.ATTACK);
+			}
+		}
+		// myMove.setType(type);
+
+		
+		
+		MovesPath path = new MovesPath(pieceType, myMove.getFrom());
+		int cordXTo = myMove.getTo().getX();
+		int cordYTo = myMove.getTo().getY();
+		
+		if(getBoard().getPieceAt(myMove.getTo()).getType()==path.calculatePath()[cordXTo][cordYTo]){
+			return myMove;			
+		}
+		//path.calculatePath()
+		
+		
 		return null;
 	}
 
