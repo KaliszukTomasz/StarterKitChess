@@ -1,6 +1,5 @@
 package com.capgemini.chess.algorithms.implementation;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -12,9 +11,15 @@ import com.capgemini.chess.algorithms.data.enums.MoveType;
 import com.capgemini.chess.algorithms.data.enums.Piece;
 import com.capgemini.chess.algorithms.data.enums.PieceType;
 import com.capgemini.chess.algorithms.data.generated.Board;
-import com.capgemini.chess.algorithms.data.generated.MovesPath;
+import com.capgemini.chess.algorithms.data.generated.MovesPathValidator;
+import com.capgemini.chess.algorithms.data.generated.PieceForm;
+import com.capgemini.chess.algorithms.implementation.exceptions.CoordinatesNotOnBoardException;
 import com.capgemini.chess.algorithms.implementation.exceptions.InvalidMoveException;
 import com.capgemini.chess.algorithms.implementation.exceptions.KingInCheckException;
+import com.capgemini.chess.algorithms.implementation.exceptions.NoKingOnBoardException;
+import com.capgemini.chess.algorithms.implementation.exceptions.NullPieceOnFromPlaceException;
+import com.capgemini.chess.algorithms.implementation.exceptions.OtherPieceOnRoadFromToException;
+import com.capgemini.chess.algorithms.implementation.exceptions.PlaceToIsUnreachableException;
 
 /**
  * Class for managing of basic operations on the Chess Board.
@@ -66,6 +71,11 @@ public class BoardManager {
 
 		Move move = validateMove(from, to);
 
+		// if(isKingInCheck(board.getPieceAt(from).getColor()))
+		// {
+		// throw new KingInCheckException();//TODO, czy mogę tutaj wrzucić
+		// sprawdzenie?
+		// }//TODO do usunięcia!!!
 		addMove(move);
 
 		return move;
@@ -75,8 +85,9 @@ public class BoardManager {
 	 * Calculates state of the chess board.
 	 *
 	 * @return state of the chess board
+	 * @throws NoKingOnBoardException
 	 */
-	public BoardState updateBoardState() {
+	public BoardState updateBoardState() throws NoKingOnBoardException {
 
 		Color nextMoveColor = calculateNextMoveColor();
 
@@ -107,7 +118,8 @@ public class BoardManager {
 	 *
 	 * @return true if current state repeated at list two times, false otherwise
 	 */
-	public boolean checkThreefoldRepetitionRule() {
+	public boolean checkThreefoldRepetitionRule() {// TODO zrozum dokładnie co
+													// sprawdza ta funkcja
 
 		// there is no need to check moves that where before last capture/en
 		// passant/castling
@@ -234,62 +246,132 @@ public class BoardManager {
 	}
 
 	private Move validateMove(Coordinate from, Coordinate to) throws InvalidMoveException, KingInCheckException {
+		
+		if (!checkIfCoordsAreOnBoard(from) || !checkIfCoordsAreOnBoard(to)) {
+			throw new CoordinatesNotOnBoardException();
+		}
 
-		// TODO please add implementation here tutaj b
-		/*
-		 * 1. Pobieramy jaka figura stoi na polu from 2. Sprawdzamy co stoi na
-		 * cordinate to 3. Sprawdzamy wedłuch schematu poruszania się danej
-		 * figury, czy dane pole jest osiągalne Z funkcji musimy otrzymać
-		 * tablicę jak board, na podstawie porównania naszego cordTo z tą
-		 * tablicą będziemy wiedzieli, czy tam moze się poruszać 4. Sprawdzamy,
-		 * czy nie będzie króla własnego pod szachem
-		 */
 		Move myMove = new Move();
 		myMove.setFrom(from);
 		myMove.setTo(to);
+		if (board.getPieceAt(from) == null) {
+			throw new NullPieceOnFromPlaceException();
+		}
+
 		myMove.setMovedPiece(getBoard().getPieceAt(from));
-		
-		PieceType pieceType = myMove.getMovedPiece().getType();
-		Color colorFrom = myMove.getMovedPiece().getColor();
-		
-		
-		// sprawdzamy, czy ruch jest mozliwy pod względem zajętości pola
-		if (myMove.getFrom().equals(null)) {
-			throw new InvalidMoveException("Place FROM is null");
-		}
-		if (myMove.getTo().equals(null)) {
-			myMove.setType(MoveType.CAPTURE);
-		} else {
-			if (getBoard().getPieceAt(to).getColor().equals(colorFrom)) {
-				throw new InvalidMoveException("This is a Piece in the same color!!!");
+
+		Color colorPieceFrom = myMove.getMovedPiece().getColor();
+		Color colorPieceTo = board.getPieceAt(to) == null ? null : getBoard().getPieceAt(to).getColor();
+		PieceForm pieceForm;
+		myMove.setType(checkWhatTypeOfMove(colorPieceFrom, colorPieceTo));
+	
+		MovesPathValidator actualyPath = new MovesPathValidator(getBoard(), myMove);
+		pieceForm = actualyPath.pieceFormFabric();
+		if (pieceForm.validMove(myMove)) {
+			if (pieceForm.checkRoadFromTo(myMove, getBoard())) {
+				boolean kingInCheck = willBeKingInCheckAfterThisMove(myMove);
+				if (kingInCheck) {
+					throw new KingInCheckException();
+				} else {
+					return myMove;
+				}
 			} else {
-				myMove.setType(MoveType.ATTACK);
+				throw new OtherPieceOnRoadFromToException();
 			}
+
+		} else {
+			throw new PlaceToIsUnreachableException();
 		}
-		// myMove.setType(type);
-
-		
-		
-		MovesPath path = new MovesPath(pieceType, myMove.getFrom());
-		int cordXTo = myMove.getTo().getX();
-		int cordYTo = myMove.getTo().getY();
-		
-		ArrayList<Coordinate> newList = path.filterPathsInBoardDimension(path.calculatePath());
-		
-		
-	// if(getBoard().getPieceAt(myMove.getTo()).getType()==path.calculatePath()[cordXTo][cordYTo]){
-	// return myMove;
-	// }
-	// path.calculatePath()
-
-	return null;
 
 	}
 
-	private boolean isKingInCheck(Color kingColor) {
+	private boolean checkIfCoordsAreOnBoard(Coordinate cord) {
 
-		// TODO please add implementation here
+		if (cord.getX() > 7 || cord.getY() > 7 || cord.getX() < 0 || cord.getY() < 0) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+
+	private MoveType checkWhatTypeOfMove(Color fromColor, Color toColor) throws InvalidMoveException {
+		if (fromColor == null) {
+			throw new InvalidMoveException();
+		}
+		if (toColor == null) {
+			return MoveType.ATTACK;
+		} else {
+			if (fromColor == toColor) {
+				throw new InvalidMoveException("This is a Piece in the same color!!!");
+			} else {
+				return MoveType.CAPTURE;
+			}
+		}
+	}
+
+	private boolean willBeKingInCheckAfterThisMove(Move move) throws NoKingOnBoardException {
+		Color pieceColor = board.getPieceAt(move.getFrom()).getColor();
+		Coordinate cordOfTheKing = checkWhereIsMyKing(pieceColor);
+		Piece tempPieceTo = board.getPieceAt(move.getTo());
+		Piece tempPieceFrom = board.getPieceAt(move.getFrom());
+		board.setPieceAt(tempPieceFrom, move.getTo());
+		board.setPieceAt(null, move.getFrom());
+
+		for (int x = 0; x < Board.SIZE; x++) {
+			for (int y = 0; y < Board.SIZE; y++) {
+				Coordinate cord = new Coordinate(x, y);
+				if (board.getPieceAt(cord) != null && board.getPieceAt(cord).getColor() != pieceColor) {
+					try {
+						MoveType tempMoveType = this.validateMove(cord, cordOfTheKing).getType();
+						if (tempMoveType == MoveType.CAPTURE) {
+							board.setPieceAt(tempPieceFrom, move.getFrom());
+							board.setPieceAt(tempPieceTo, move.getTo());
+							return true;
+						}
+					} catch (InvalidMoveException e) {
+					}
+				}
+			}
+		}
+
 		return false;
+
+	}
+
+	private boolean isKingInCheck(Color kingColor) throws NoKingOnBoardException {
+
+		Coordinate cordOfTheKing = checkWhereIsMyKing(kingColor);
+
+		for (int x = 0; x < Board.SIZE; x++) {
+			for (int y = 0; y < Board.SIZE; y++) {
+				Coordinate cord = new Coordinate(x, y);
+				if (this.board.getPieceAt(cord) != null && this.board.getPieceAt(cord).getColor() != kingColor) {
+					try {
+						if (validateMove(cord, cordOfTheKing).getType() == MoveType.CAPTURE) {
+							return true;
+						}
+					} catch (InvalidMoveException e) {
+
+					}
+				}
+			}
+		}
+		return false;
+
+	}
+
+	private Coordinate checkWhereIsMyKing(Color kingColor) throws NoKingOnBoardException {
+
+		for (int x = 0; x < Board.SIZE; x++) {
+			for (int y = 0; y < Board.SIZE; y++) {
+				Coordinate cord = new Coordinate(x, y);
+				if (this.board.getPieceAt(cord) != null && this.board.getPieceAt(cord).getType() == PieceType.KING
+						&& this.board.getPieceAt(cord).getColor() == kingColor) {
+					return cord;
+				}
+			}
+		}
+		throw new NoKingOnBoardException();
 	}
 
 	private boolean isAnyMoveValid(Color nextMoveColor) {
