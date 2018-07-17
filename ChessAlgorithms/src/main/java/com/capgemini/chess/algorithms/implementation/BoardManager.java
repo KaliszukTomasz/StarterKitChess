@@ -18,10 +18,12 @@ import com.capgemini.chess.algorithms.implementation.exceptions.CoordinatesNotOn
 import com.capgemini.chess.algorithms.implementation.exceptions.InvalidColorMovedPiece;
 import com.capgemini.chess.algorithms.implementation.exceptions.InvalidMoveException;
 import com.capgemini.chess.algorithms.implementation.exceptions.KingInCheckException;
+import com.capgemini.chess.algorithms.implementation.exceptions.KingWillBeBeatenDuringCastling;
 import com.capgemini.chess.algorithms.implementation.exceptions.NoKingOnBoardException;
 import com.capgemini.chess.algorithms.implementation.exceptions.NullPieceOnFromPlaceException;
 import com.capgemini.chess.algorithms.implementation.exceptions.OtherPieceOnRoadFromToException;
 import com.capgemini.chess.algorithms.implementation.exceptions.PlaceToIsUnreachableException;
+import com.capgemini.chess.algorithms.implementation.exceptions.TheSameColorFromToPlacesException;
 
 /**
  * Class for managing of basic operations on the Chess Board.
@@ -74,11 +76,6 @@ public class BoardManager {
 
 		Move move = validateMove(from, to);
 
-		// if(isKingInCheck(board.getPieceAt(from).getColor()))
-		// {
-		// throw new KingInCheckException();//TODO, czy mogę tutaj wrzucić
-		// sprawdzenie?
-		// }//TODO do usunięcia!!!
 		addMove(move);
 
 		return move;
@@ -88,7 +85,7 @@ public class BoardManager {
 	 * Calculates state of the chess board.
 	 *
 	 * @return state of the chess board
-	 * @throws InvalidMoveException 
+	 * @throws InvalidMoveException
 	 */
 	public BoardState updateBoardState() throws InvalidMoveException {
 
@@ -121,8 +118,7 @@ public class BoardManager {
 	 *
 	 * @return true if current state repeated at list two times, false otherwise
 	 */
-	public boolean checkThreefoldRepetitionRule() {// TODO zrozum dokładnie co
-													// sprawdza ta funkcja
+	public boolean checkThreefoldRepetitionRule() {
 
 		// there is no need to check moves that where before last capture/en
 		// passant/castling
@@ -264,26 +260,51 @@ public class BoardManager {
 		myMove.setTo(to);
 
 		myMove.setMovedPiece(getBoard().getPieceAt(from));
-		Color colorPieceFrom = myMove.getMovedPiece().getColor();
-		Color colorPieceTo = board.getPieceAt(to) == null ? null : getBoard().getPieceAt(to).getColor();
+//		Color colorPieceFrom = myMove.getMovedPiece().getColor();
+//		Color colorPieceTo = board.getPieceAt(to) == null ? null : getBoard().getPieceAt(to).getColor();
 
 		if (calculateNextMoveColor() != board.getPieceAt(from).getColor()) {
 			throw new InvalidColorMovedPiece();
 		}
 
-		myMove.setType(checkWhatTypeOfMove(colorPieceFrom, colorPieceTo));
+		myMove.setType(checkWhatTypeOfMove2(myMove, board));
 
 		PieceFactory pieceFactory = new PieceFactory();
 		PieceForm pieceForm = pieceFactory.getPieceForm(myMove.getFrom(), board);
+		// TODO metody nie boolean i kazdy mial excepiton
 		if (pieceForm.validMove(myMove)) {
 			if (pieceForm.checkRoadFromTo(myMove, getBoard())) {
-				this.board.getMoveHistory().add(myMove);
-				boolean kingInCheck = willBeKingInCheckAfterThisMove(myMove);
-				this.board.getMoveHistory().remove(this.board.getMoveHistory().size() - 1);
-				if (kingInCheck) {
-					throw new KingInCheckException();
+				if (myMove.getType() == MoveType.CASTLING) {
+					int directionX = (myMove.getTo().getX() - myMove.getFrom().getX()) / 2;
+					myMove.setTo(new Coordinate(myMove.getFrom().getX() + directionX, myMove.getFrom().getY()));
+					this.board.getMoveHistory().add(myMove);
+					boolean kingInCheck = willBeKingInCheckAfterThisMove(myMove);
+					this.board.getMoveHistory().remove(this.board.getMoveHistory().size() - 1);
+					if (kingInCheck) {
+						throw new KingWillBeBeatenDuringCastling();
+					} else {
+						myMove.setTo(new Coordinate(myMove.getFrom().getX() + directionX, myMove.getFrom().getY()));
+						this.board.getMoveHistory().add(myMove);
+						kingInCheck = willBeKingInCheckAfterThisMove(myMove);
+						this.board.getMoveHistory().remove(this.board.getMoveHistory().size() - 1);
+						if (kingInCheck) {
+							throw new KingWillBeBeatenDuringCastling();
+						} else {
+							return myMove;
+						}
+					}
+					// sprawdzenie pokolei ruchow nie dodajemy myMove, tylko po
+					// kolei jedno i drugie przesunięcie
+
 				} else {
-					return myMove;
+					this.board.getMoveHistory().add(myMove);
+					boolean kingInCheck = willBeKingInCheckAfterThisMove(myMove);
+					this.board.getMoveHistory().remove(this.board.getMoveHistory().size() - 1);
+					if (kingInCheck) {
+						throw new KingInCheckException();
+					} else {
+						return myMove;
+					}
 				}
 			} else {
 				throw new OtherPieceOnRoadFromToException();
@@ -302,6 +323,44 @@ public class BoardManager {
 		} else {
 			return true;
 		}
+	}
+
+	private MoveType checkWhatTypeOfMove2(Move move, Board board) throws InvalidMoveException {
+
+		Color fromColor = board.getPieceAt(move.getFrom()).getColor();
+		Color toColor = board.getPieceAt(move.getTo()) == null ? null : board.getPieceAt(move.getTo()).getColor();
+
+		boolean castlingCondition1 = (Math.abs(move.getFrom().getX() - move.getTo().getX()) == 2
+				&& (move.getFrom().getY() - move.getTo().getY() == 0));
+		boolean castlingCondition2 = PieceType.KING == board.getPieceAt(move.getFrom()).getType()
+				&& board.getPieceAt(move.getTo()) == null;
+		boolean kingMovedFlag = false;
+
+		if (fromColor == null) {
+			throw new InvalidMoveException();
+		}
+		if (castlingCondition1 && castlingCondition2) {
+			for (Move historyMove : this.board.getMoveHistory()) {
+				if (PieceType.KING == historyMove.getMovedPiece().getType()) {
+					// throw new KingMovedAlreadyAndCanstlingIsImpossible();
+					kingMovedFlag = true;
+				}
+			}
+			if (!kingMovedFlag) {
+				return MoveType.CASTLING;
+			}
+		}
+
+		if (toColor == null) {
+			return MoveType.ATTACK;
+		} else {
+			if (fromColor == toColor) {
+				throw new TheSameColorFromToPlacesException();
+			} else {
+				return MoveType.CAPTURE;
+			}
+		}
+
 	}
 
 	private MoveType checkWhatTypeOfMove(Color fromColor, Color toColor) throws InvalidMoveException {
@@ -355,20 +414,18 @@ public class BoardManager {
 		for (int x = 0; x < Board.SIZE; x++) {
 			for (int y = 0; y < Board.SIZE; y++) {
 				Coordinate cord = new Coordinate(x, y);
-				
 				if (this.board.getPieceAt(cord) != null && this.board.getPieceAt(cord).getColor() != kingColor) {
 					try {
 						if (validateMove(cord, cordOfTheKing).getType() == MoveType.CAPTURE) {
-							this.board.getMoveHistory().remove(this.board.getMoveHistory().size()-1);
+							this.board.getMoveHistory().remove(this.board.getMoveHistory().size() - 1);
 							return true;
 						}
 					} catch (InvalidMoveException e) {
-
 					}
 				}
 			}
 		}
-		this.board.getMoveHistory().remove(this.board.getMoveHistory().size()-1);
+		this.board.getMoveHistory().remove(this.board.getMoveHistory().size() - 1);
 		return false;
 
 	}
@@ -398,19 +455,17 @@ public class BoardManager {
 					ArrayList<Coordinate> arrayOfMoves = pieceForm.giveArrayToCheckIfAnyMoveValid(cord);
 					for (Coordinate cordToCheck : arrayOfMoves) {
 						try {
-							if(this.validateMove(cord, cordToCheck) != null ){
+							if (this.validateMove(cord, cordToCheck) != null) {
 								return true;
 							}
 						} catch (InvalidMoveException e) {
 
 						}
-
 					}
 				}
 			}
-
-		} return false;
-
+		}
+		return false;
 	}
 
 	private Color calculateNextMoveColor() {

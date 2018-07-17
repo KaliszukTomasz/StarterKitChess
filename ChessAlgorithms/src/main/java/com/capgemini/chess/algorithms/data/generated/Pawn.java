@@ -7,12 +7,12 @@ import com.capgemini.chess.algorithms.data.Move;
 import com.capgemini.chess.algorithms.data.enums.Color;
 import com.capgemini.chess.algorithms.data.enums.MoveType;
 import com.capgemini.chess.algorithms.implementation.exceptions.OtherPieceOnRoadFromToException;
-import com.capgemini.chess.algorithms.implementation.exceptions.SomethinkWithValidationOfPawnException;
+import com.capgemini.chess.algorithms.implementation.exceptions.SomethingWithValidationOfPawnException;
 
 public class Pawn implements PieceForm {
 
 	@Override
-	public boolean validMove(Move move) throws SomethinkWithValidationOfPawnException {
+	public boolean validMove(Move move) throws SomethingWithValidationOfPawnException {
 		int fromX = move.getFrom().getX();
 		int toX = move.getTo().getX();
 		int fromY = move.getFrom().getY();
@@ -30,7 +30,7 @@ public class Pawn implements PieceForm {
 			} else if (capture) {
 				return (Math.abs(toX - fromX) == 1 && Math.abs(toY - fromY) == 1);
 			} else {
-				throw new SomethinkWithValidationOfPawnException();
+				throw new SomethingWithValidationOfPawnException();
 			}
 
 		} else {
@@ -44,7 +44,7 @@ public class Pawn implements PieceForm {
 
 	@Override
 	public boolean checkRoadFromTo(Move move, Board board)
-			throws OtherPieceOnRoadFromToException, SomethinkWithValidationOfPawnException {
+			throws OtherPieceOnRoadFromToException, SomethingWithValidationOfPawnException {
 
 		int fromX = move.getFrom().getX();
 		int fromY = move.getFrom().getY();
@@ -64,7 +64,7 @@ public class Pawn implements PieceForm {
 		else if (moveAmount == 1) {
 			return true;
 		} else {
-			throw new SomethinkWithValidationOfPawnException("Somethink is valid");
+			throw new SomethingWithValidationOfPawnException("Somethink is valid");
 
 		}
 	}

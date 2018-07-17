@@ -8,7 +8,5 @@ public class CoordinatesNotOnBoardException extends InvalidMoveException {
 		super("Coords <0 or >7!!!");
 	}
 
-	public CoordinatesNotOnBoardException(String message) {
-		super("Coords <0 or >7!!! " + message);
-	}
+
 }
