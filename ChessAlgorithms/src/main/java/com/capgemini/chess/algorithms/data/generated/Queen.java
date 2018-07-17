@@ -1,5 +1,7 @@
 package com.capgemini.chess.algorithms.data.generated;
 
+import java.util.ArrayList;
+
 import com.capgemini.chess.algorithms.data.Coordinate;
 import com.capgemini.chess.algorithms.data.Move;
 import com.capgemini.chess.algorithms.implementation.exceptions.OtherPieceOnRoadFromToException;
@@ -41,6 +43,23 @@ public class Queen implements PieceForm {
 		}
 		return true;
 
+	}
+
+	@Override
+	public ArrayList<Coordinate> giveArrayToCheckIfAnyMoveValid(Coordinate cord) {
+		int fromX = cord.getX();
+		int fromY = cord.getY();
+		ArrayList<Coordinate> arrayList = new ArrayList<>();
+		arrayList.add(new Coordinate(fromX + 1, fromY + 1));
+		arrayList.add(new Coordinate(fromX - 1, fromY + 1));
+		arrayList.add(new Coordinate(fromX - 1, fromY - 1));
+		arrayList.add(new Coordinate(fromX + 1, fromY - 1));
+		arrayList.add(new Coordinate(fromX, fromY - 1));
+		arrayList.add(new Coordinate(fromX + 1, fromY));
+		arrayList.add(new Coordinate(fromX, fromY + 1));
+		arrayList.add(new Coordinate(fromX - 1, fromY));
+
+		return arrayList;
 	}
 
 }

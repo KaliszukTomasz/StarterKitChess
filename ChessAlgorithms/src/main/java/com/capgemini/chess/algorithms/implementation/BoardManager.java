@@ -1,5 +1,6 @@
 package com.capgemini.chess.algorithms.implementation;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -11,9 +12,10 @@ import com.capgemini.chess.algorithms.data.enums.MoveType;
 import com.capgemini.chess.algorithms.data.enums.Piece;
 import com.capgemini.chess.algorithms.data.enums.PieceType;
 import com.capgemini.chess.algorithms.data.generated.Board;
-import com.capgemini.chess.algorithms.data.generated.MovesPathValidator;
+import com.capgemini.chess.algorithms.data.generated.PieceFactory;
 import com.capgemini.chess.algorithms.data.generated.PieceForm;
 import com.capgemini.chess.algorithms.implementation.exceptions.CoordinatesNotOnBoardException;
+import com.capgemini.chess.algorithms.implementation.exceptions.InvalidColorMovedPiece;
 import com.capgemini.chess.algorithms.implementation.exceptions.InvalidMoveException;
 import com.capgemini.chess.algorithms.implementation.exceptions.KingInCheckException;
 import com.capgemini.chess.algorithms.implementation.exceptions.NoKingOnBoardException;
@@ -66,8 +68,9 @@ public class BoardManager {
 	 * @return move object which includes moved piece and move type
 	 * @throws InvalidMoveException
 	 *             in case move is not valid
+	 * @throws InvalidColorMovedPiece
 	 */
-	public Move performMove(Coordinate from, Coordinate to) throws InvalidMoveException {
+	public Move performMove(Coordinate from, Coordinate to) throws InvalidMoveException, InvalidColorMovedPiece {
 
 		Move move = validateMove(from, to);
 
@@ -85,9 +88,9 @@ public class BoardManager {
 	 * Calculates state of the chess board.
 	 *
 	 * @return state of the chess board
-	 * @throws NoKingOnBoardException
+	 * @throws InvalidMoveException 
 	 */
-	public BoardState updateBoardState() throws NoKingOnBoardException {
+	public BoardState updateBoardState() throws InvalidMoveException {
 
 		Color nextMoveColor = calculateNextMoveColor();
 
@@ -245,31 +248,38 @@ public class BoardManager {
 		this.board.setPieceAt(null, lastMove.getTo());
 	}
 
-	private Move validateMove(Coordinate from, Coordinate to) throws InvalidMoveException, KingInCheckException {
-		
+	private Move validateMove(Coordinate from, Coordinate to)
+			throws InvalidMoveException, KingInCheckException, InvalidColorMovedPiece {
+
 		if (!checkIfCoordsAreOnBoard(from) || !checkIfCoordsAreOnBoard(to)) {
 			throw new CoordinatesNotOnBoardException();
+		}
+
+		if (board.getPieceAt(from) == null) {
+			throw new NullPieceOnFromPlaceException();
 		}
 
 		Move myMove = new Move();
 		myMove.setFrom(from);
 		myMove.setTo(to);
-		if (board.getPieceAt(from) == null) {
-			throw new NullPieceOnFromPlaceException();
-		}
 
 		myMove.setMovedPiece(getBoard().getPieceAt(from));
-
 		Color colorPieceFrom = myMove.getMovedPiece().getColor();
 		Color colorPieceTo = board.getPieceAt(to) == null ? null : getBoard().getPieceAt(to).getColor();
-		PieceForm pieceForm;
+
+		if (calculateNextMoveColor() != board.getPieceAt(from).getColor()) {
+			throw new InvalidColorMovedPiece();
+		}
+
 		myMove.setType(checkWhatTypeOfMove(colorPieceFrom, colorPieceTo));
-	
-		MovesPathValidator actualyPath = new MovesPathValidator(getBoard(), myMove);
-		pieceForm = actualyPath.pieceFormFabric();
+
+		PieceFactory pieceFactory = new PieceFactory();
+		PieceForm pieceForm = pieceFactory.getPieceForm(myMove.getFrom(), board);
 		if (pieceForm.validMove(myMove)) {
 			if (pieceForm.checkRoadFromTo(myMove, getBoard())) {
+				this.board.getMoveHistory().add(myMove);
 				boolean kingInCheck = willBeKingInCheckAfterThisMove(myMove);
+				this.board.getMoveHistory().remove(this.board.getMoveHistory().size() - 1);
 				if (kingInCheck) {
 					throw new KingInCheckException();
 				} else {
@@ -309,14 +319,13 @@ public class BoardManager {
 		}
 	}
 
-	private boolean willBeKingInCheckAfterThisMove(Move move) throws NoKingOnBoardException {
+	private boolean willBeKingInCheckAfterThisMove(Move move) throws NoKingOnBoardException, InvalidColorMovedPiece {
 		Color pieceColor = board.getPieceAt(move.getFrom()).getColor();
-		Coordinate cordOfTheKing = checkWhereIsMyKing(pieceColor);
 		Piece tempPieceTo = board.getPieceAt(move.getTo());
 		Piece tempPieceFrom = board.getPieceAt(move.getFrom());
 		board.setPieceAt(tempPieceFrom, move.getTo());
 		board.setPieceAt(null, move.getFrom());
-
+		Coordinate cordOfTheKing = checkWhereIsMyKing(pieceColor);
 		for (int x = 0; x < Board.SIZE; x++) {
 			for (int y = 0; y < Board.SIZE; y++) {
 				Coordinate cord = new Coordinate(x, y);
@@ -333,21 +342,24 @@ public class BoardManager {
 				}
 			}
 		}
-
+		board.setPieceAt(tempPieceFrom, move.getFrom());
+		board.setPieceAt(tempPieceTo, move.getTo());
 		return false;
 
 	}
 
-	private boolean isKingInCheck(Color kingColor) throws NoKingOnBoardException {
+	private boolean isKingInCheck(Color kingColor) throws NoKingOnBoardException, InvalidColorMovedPiece {
 
 		Coordinate cordOfTheKing = checkWhereIsMyKing(kingColor);
-
+		this.board.getMoveHistory().add(null);
 		for (int x = 0; x < Board.SIZE; x++) {
 			for (int y = 0; y < Board.SIZE; y++) {
 				Coordinate cord = new Coordinate(x, y);
+				
 				if (this.board.getPieceAt(cord) != null && this.board.getPieceAt(cord).getColor() != kingColor) {
 					try {
 						if (validateMove(cord, cordOfTheKing).getType() == MoveType.CAPTURE) {
+							this.board.getMoveHistory().remove(this.board.getMoveHistory().size()-1);
 							return true;
 						}
 					} catch (InvalidMoveException e) {
@@ -356,6 +368,7 @@ public class BoardManager {
 				}
 			}
 		}
+		this.board.getMoveHistory().remove(this.board.getMoveHistory().size()-1);
 		return false;
 
 	}
@@ -374,11 +387,30 @@ public class BoardManager {
 		throw new NoKingOnBoardException();
 	}
 
-	private boolean isAnyMoveValid(Color nextMoveColor) {
+	private boolean isAnyMoveValid(Color nextMoveColor) throws InvalidMoveException {
 
-		// TODO please add implementation here
+		for (int x = 0; x < Board.SIZE; x++) {
+			for (int y = 0; y < Board.SIZE; y++) {
+				Coordinate cord = new Coordinate(x, y);
+				if (this.board.getPieceAt(cord) != null && this.board.getPieceAt(cord).getColor() == nextMoveColor) {
+					PieceFactory pieceFactory = new PieceFactory();
+					PieceForm pieceForm = pieceFactory.getPieceForm(cord, this.board);
+					ArrayList<Coordinate> arrayOfMoves = pieceForm.giveArrayToCheckIfAnyMoveValid(cord);
+					for (Coordinate cordToCheck : arrayOfMoves) {
+						try {
+							if(this.validateMove(cord, cordToCheck) != null ){
+								return true;
+							}
+						} catch (InvalidMoveException e) {
 
-		return false;
+						}
+
+					}
+				}
+			}
+
+		} return false;
+
 	}
 
 	private Color calculateNextMoveColor() {
