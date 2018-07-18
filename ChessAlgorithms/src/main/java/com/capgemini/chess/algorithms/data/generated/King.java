@@ -5,9 +5,8 @@ import java.util.ArrayList;
 import com.capgemini.chess.algorithms.data.Coordinate;
 import com.capgemini.chess.algorithms.data.Move;
 import com.capgemini.chess.algorithms.data.enums.MoveType;
-import com.capgemini.chess.algorithms.data.enums.Piece;
 import com.capgemini.chess.algorithms.data.enums.PieceType;
-import com.capgemini.chess.algorithms.implementation.BoardManager;
+import com.capgemini.chess.algorithms.implementation.exceptions.CastlingCantHappenCauseRookAlreadyMoved;
 import com.capgemini.chess.algorithms.implementation.exceptions.NoRookInTheCornerInCastlingException;
 import com.capgemini.chess.algorithms.implementation.exceptions.OtherPieceOnRoadFromToException;
 
@@ -21,25 +20,39 @@ public class King implements PieceForm {
 		int toY = move.getTo().getY();
 
 		if (MoveType.CASTLING == move.getType()) {
-			return (Math.abs(fromX - toX) == 2 && Math.abs(fromY - toY) == 0);// w
-																				// celu
-																				// potwierdzenia
+			return true;
 		}
 		return (Math.abs(fromX - toX) <= 1 && Math.abs(fromY - toY) <= 1);
 	}
 
-	@Override
-	public boolean checkRoadFromTo(Move move, Board board) throws OtherPieceOnRoadFromToException, NoRookInTheCornerInCastlingException {
+	@Override 
+	public boolean checkRoadFromTo(Move move, Board board)
+			throws OtherPieceOnRoadFromToException, NoRookInTheCornerInCastlingException, CastlingCantHappenCauseRookAlreadyMoved {
 		if (MoveType.CASTLING == move.getType()) {
 			int directionX = (move.getTo().getX() - move.getFrom().getX()) / 2;
-			if(directionX > 0){
-				if(board.getPieceAt(new Coordinate(7, move.getFrom().getY()))==null?true:PieceType.ROOK !=board.getPieceAt(new Coordinate(7, move.getFrom().getY())).getType() ){
+			if (directionX > 0) {
+				if (board.getPieceAt(new Coordinate(7, move.getFrom().getY())) == null ? true
+						: PieceType.ROOK != board.getPieceAt(new Coordinate(7, move.getFrom().getY())).getType()) {
+					throw new NoRookInTheCornerInCastlingException();
+				}
+			} else {
+				if (board.getPieceAt(new Coordinate(0, move.getFrom().getY())) == null ? true
+						: PieceType.ROOK != board.getPieceAt(new Coordinate(0, move.getFrom().getY())).getType()) {
 					throw new NoRookInTheCornerInCastlingException();
 				}
 			}
-			else{
-				if(board.getPieceAt(new Coordinate(0, move.getFrom().getY()))==null?true:PieceType.ROOK != board.getPieceAt(new Coordinate(0, move.getFrom().getY())).getType() ){
-					throw new NoRookInTheCornerInCastlingException();
+
+			for (Move moveInHistory : board.getMoveHistory()) {
+				if (directionX > 0) {
+					if (moveInHistory.getFrom().getX() == 7 && move.getFrom().getY() == moveInHistory.getFrom().getY()
+							&& moveInHistory.getMovedPiece().getType() == PieceType.ROOK) {
+						throw new CastlingCantHappenCauseRookAlreadyMoved();
+					}
+				} else {
+					if (moveInHistory.getFrom().getX() == 0
+							&& moveInHistory.getMovedPiece().getType() == PieceType.ROOK) {
+						throw new CastlingCantHappenCauseRookAlreadyMoved();
+					}
 				}
 			}
 			if (board.getPieceAt(new Coordinate(move.getFrom().getX() + directionX, move.getFrom().getY())) == null) {

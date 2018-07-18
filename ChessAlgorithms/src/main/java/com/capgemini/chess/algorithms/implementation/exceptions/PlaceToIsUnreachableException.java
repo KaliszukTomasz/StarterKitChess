@@ -7,8 +7,4 @@ public class PlaceToIsUnreachableException extends InvalidMoveException {
 	public PlaceToIsUnreachableException() {
 		super("Place TO is unreachable!!!");
 	}
-
-	public PlaceToIsUnreachableException(String message) {
-		super("Place TO is unreachable!!! " + message);
-	}
 }

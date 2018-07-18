@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import com.capgemini.chess.algorithms.data.Coordinate;
 import com.capgemini.chess.algorithms.data.Move;
 import com.capgemini.chess.algorithms.implementation.exceptions.OtherPieceOnRoadFromToException;
-import com.capgemini.chess.algorithms.implementation.exceptions.SomethingWithValidationOfPawnException;
 
 public class Queen implements PieceForm {
 
@@ -22,7 +21,7 @@ public class Queen implements PieceForm {
 
 	@Override
 	public boolean checkRoadFromTo(Move move, Board board)
-			throws OtherPieceOnRoadFromToException, SomethingWithValidationOfPawnException {
+			throws OtherPieceOnRoadFromToException {
 
 		int fromX = move.getFrom().getX();
 		int toX = move.getTo().getX();

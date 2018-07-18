@@ -9,8 +9,4 @@ public class NoKingOnBoardException extends InvalidMoveException {
 	public NoKingOnBoardException() {
 		super("King isn't on board!!!");
 	}
-
-	public NoKingOnBoardException(String message) {
-		super("King isn't on board!!! " + message);
-	}
 }

@@ -7,30 +7,33 @@ import com.capgemini.chess.algorithms.data.Move;
 import com.capgemini.chess.algorithms.data.enums.Color;
 import com.capgemini.chess.algorithms.data.enums.MoveType;
 import com.capgemini.chess.algorithms.implementation.exceptions.OtherPieceOnRoadFromToException;
-import com.capgemini.chess.algorithms.implementation.exceptions.SomethingWithValidationOfPawnException;
 
 public class Pawn implements PieceForm {
 
 	@Override
-	public boolean validMove(Move move) throws SomethingWithValidationOfPawnException {
+	public boolean validMove(Move move)  {
 		int fromX = move.getFrom().getX();
 		int toX = move.getTo().getX();
 		int fromY = move.getFrom().getY();
 		int toY = move.getTo().getY();
-		boolean capture = (move.getType() == MoveType.CAPTURE);
+		boolean enPassant = (move.getType() == MoveType.EN_PASSANT);
+		boolean captureOrEnPassant = (move.getType() == MoveType.CAPTURE)|| (move.getType() == MoveType.EN_PASSANT);
 		boolean firstMove = ((move.getMovedPiece().getColor() == Color.WHITE && move.getFrom().getY() == 1)
 				|| (move.getMovedPiece().getColor() == Color.BLACK && move.getFrom().getY() == 6));
-
 		if (validDirection(fromY, toY, move.getMovedPiece().getColor())) {
-			if (firstMove && !capture) {
+			if (enPassant) {
+				return true;
+			}
+
+			if (firstMove && !captureOrEnPassant) {
 				return ((((Math.abs(toY - fromY) == 2) || Math.abs(toY - fromY) == 1)) && Math.abs(toX - fromX) == 0);
 
-			} else if (!firstMove && !capture) {
+			} else if (!firstMove && !captureOrEnPassant) {
 				return (Math.abs(toY - fromY) == 1 && Math.abs(toX - fromX) == 0);
-			} else if (capture) {
+			} else if (captureOrEnPassant) {
 				return (Math.abs(toX - fromX) == 1 && Math.abs(toY - fromY) == 1);
 			} else {
-				throw new SomethingWithValidationOfPawnException();
+				return false;
 			}
 
 		} else {
@@ -44,7 +47,7 @@ public class Pawn implements PieceForm {
 
 	@Override
 	public boolean checkRoadFromTo(Move move, Board board)
-			throws OtherPieceOnRoadFromToException, SomethingWithValidationOfPawnException {
+			throws OtherPieceOnRoadFromToException {
 
 		int fromX = move.getFrom().getX();
 		int fromY = move.getFrom().getY();
@@ -52,6 +55,10 @@ public class Pawn implements PieceForm {
 
 		int moveAmount = Math.abs(toY - fromY);
 		int directionOfMoveY = (toY - fromY) / moveAmount;
+
+		if (move.getType() == MoveType.EN_PASSANT) {
+			return true;
+		}
 
 		if (moveAmount == 2) {
 			if (board.getPieceAt(new Coordinate(fromX, fromY + directionOfMoveY)) == null) {
@@ -63,10 +70,8 @@ public class Pawn implements PieceForm {
 
 		else if (moveAmount == 1) {
 			return true;
-		} else {
-			throw new SomethingWithValidationOfPawnException("Somethink is valid");
-
 		}
+		return false; 
 	}
 
 	@Override
@@ -83,7 +88,7 @@ public class Pawn implements PieceForm {
 		arrayList.add(new Coordinate(fromX, fromY - 1));
 		arrayList.add(new Coordinate(fromX - 1, fromY - 1));
 		arrayList.add(new Coordinate(fromX + 1, fromY - 1));
-		
+
 		return arrayList;
 	}
 }

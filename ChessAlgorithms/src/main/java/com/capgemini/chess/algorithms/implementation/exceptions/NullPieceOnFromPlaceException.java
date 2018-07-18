@@ -8,8 +8,4 @@ public class NullPieceOnFromPlaceException extends InvalidMoveException{
 	public  NullPieceOnFromPlaceException() {
 		super("Place FROM is empty!!!");
 	}
-
-	public NullPieceOnFromPlaceException(String message) {
-		super("Place FROM is empty!!! " + message);
-	}
 }
