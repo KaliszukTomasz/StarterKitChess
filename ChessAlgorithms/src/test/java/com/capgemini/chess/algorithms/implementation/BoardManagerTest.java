@@ -23,6 +23,7 @@ import com.capgemini.chess.algorithms.implementation.exceptions.InvalidColorMove
 import com.capgemini.chess.algorithms.implementation.exceptions.InvalidMoveException;
 import com.capgemini.chess.algorithms.implementation.exceptions.KingInCheckException;
 import com.capgemini.chess.algorithms.implementation.exceptions.NoRookInTheCornerInCastlingException;
+import com.capgemini.chess.algorithms.implementation.exceptions.OtherPieceOnRoadFromToException;
 
 /**
  * Test class for testing {@link BoardManager}
@@ -31,6 +32,174 @@ import com.capgemini.chess.algorithms.implementation.exceptions.NoRookInTheCorne
  *
  */
 public class BoardManagerTest {
+
+	@Test
+	public void testUpdateBoardStaleMateSituation() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.getMoveHistory().add(createDummyMove(board));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(7, 7));
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(7, 5));
+		board.setPieceAt(Piece.WHITE_ROOK, new Coordinate(6, 5));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		BoardState boardState = boardManager.updateBoardState();
+
+		// then
+		assertEquals(BoardState.STALE_MATE, boardState);
+	}
+
+	@Test
+	public void testUpdateBoardStaleMateAdvancedSituation() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.getMoveHistory().add(createDummyMove(board));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(6, 7));
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(7, 5));
+		board.setPieceAt(Piece.WHITE_QUEEN, new Coordinate(5, 5));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(7, 6));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(3, 5));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(3, 4));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		BoardState boardState = boardManager.updateBoardState();
+
+		// then
+		assertEquals(BoardState.STALE_MATE, boardState);
+	}
+
+	@Test
+	public void testUpdateBoardStaleRegularAdvancedSituation() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.getMoveHistory().add(createDummyMove(board));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(6, 7));
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(7, 5));
+		board.setPieceAt(Piece.WHITE_QUEEN, new Coordinate(5, 5));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(7, 6));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(3, 5));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(3, 4));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(4, 6));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(4, 5));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		BoardState boardState = boardManager.updateBoardState();
+
+		// then
+		assertEquals(BoardState.REGULAR, boardState);
+	}
+
+	@Test
+	public void testKnightCapture() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.getMoveHistory().add(createDummyMove(board));
+		board.setPieceAt(Piece.BLACK_KNIGHT, new Coordinate(1, 3));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(6, 7));
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(7, 5));
+		board.setPieceAt(Piece.WHITE_QUEEN, new Coordinate(5, 5));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(7, 6));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(3, 5));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(3, 4));
+		int amountOfPiecesOnTheStart = calculateNumberOfPieces(board);
+		int amountOfPiecesOnTheEnd = 0;
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		boolean exceptionSchouldNotHappen = false;
+
+		try {
+			boardManager.performMove(new Coordinate(1, 3), new Coordinate(3, 4));
+			amountOfPiecesOnTheEnd = calculateNumberOfPieces(board);
+		}
+
+		catch (InvalidMoveException e) {
+			exceptionSchouldNotHappen = true;
+		}
+		// then
+		assertFalse(exceptionSchouldNotHappen);
+		assertEquals(7, amountOfPiecesOnTheStart);
+		assertEquals(6, amountOfPiecesOnTheEnd);
+	}
+
+	@Test
+	public void testUpdateBoardStateCheckMateSituation() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.getMoveHistory().add(createDummyMove(board));
+		board.setPieceAt(Piece.BLACK_ROOK, new Coordinate(0, 7));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(2, 7));
+		board.setPieceAt(Piece.WHITE_ROOK, new Coordinate(3, 7));
+		board.setPieceAt(Piece.BLACK_BISHOP, new Coordinate(4, 7));
+		board.setPieceAt(Piece.BLACK_BISHOP, new Coordinate(5, 7));
+		board.setPieceAt(Piece.BLACK_ROOK, new Coordinate(7, 7));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(0, 6));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(1, 6));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(2, 6));
+		board.setPieceAt(Piece.WHITE_KNIGHT, new Coordinate(5, 6));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(6, 6));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(7, 6));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(5, 5));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(5, 4));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(1, 2));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(0, 1));
+		board.setPieceAt(Piece.WHITE_BISHOP, new Coordinate(1, 1));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(2, 1));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(6, 1));
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(6, 0));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		BoardState boardState = boardManager.updateBoardState();
+
+		// then
+		assertEquals(BoardState.CHECK_MATE, boardState);
+	}
+
+	@Test
+	public void testPerformRegularMoveAllPieceType() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(7, 7));
+		board.setPieceAt(Piece.WHITE_ROOK, new Coordinate(7, 5));
+		board.setPieceAt(Piece.WHITE_BISHOP, new Coordinate(6, 7));
+		board.setPieceAt(Piece.WHITE_KNIGHT, new Coordinate(6, 5));
+		board.setPieceAt(Piece.WHITE_QUEEN, new Coordinate(6, 6));
+		board.setPieceAt(Piece.WHITE_PAWN, new Coordinate(5, 1));
+
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(0, 7));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(0, 6));
+		board.setPieceAt(Piece.BLACK_ROOK, new Coordinate(0, 4));
+		board.setPieceAt(Piece.BLACK_QUEEN, new Coordinate(0, 0));
+		board.setPieceAt(Piece.BLACK_KNIGHT, new Coordinate(2, 2));
+		board.setPieceAt(Piece.BLACK_BISHOP, new Coordinate(0, 2));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		boolean exceptionSchouldNotHappen = false;
+
+		try {
+			boardManager.performMove(new Coordinate(7, 7), new Coordinate(7, 6));
+			boardManager.performMove(new Coordinate(0, 7), new Coordinate(1, 7));
+			boardManager.performMove(new Coordinate(7, 5), new Coordinate(7, 3));
+			boardManager.performMove(new Coordinate(0, 6), new Coordinate(0, 5));
+			boardManager.performMove(new Coordinate(6, 7), new Coordinate(4, 5));
+			boardManager.performMove(new Coordinate(0, 4), new Coordinate(1, 4));
+			boardManager.performMove(new Coordinate(6, 5), new Coordinate(5, 3));
+			boardManager.performMove(new Coordinate(0, 0), new Coordinate(7, 0));
+			boardManager.performMove(new Coordinate(6, 6), new Coordinate(3, 3));
+			boardManager.performMove(new Coordinate(2, 2), new Coordinate(4, 1));
+			boardManager.performMove(new Coordinate(5, 1), new Coordinate(5, 2));
+			boardManager.performMove(new Coordinate(0, 2), new Coordinate(1, 1));
+		} catch (InvalidMoveException e) {
+			exceptionSchouldNotHappen = true;
+		}
+		// then
+		assertFalse(exceptionSchouldNotHappen);
+
+	}
 
 	@Test
 	public void testGenerateBoardInitialPositionAndCheckPawnCapturePawnAndPromotionPawnToQueen() {
@@ -137,7 +306,32 @@ public class BoardManagerTest {
 	}
 
 	@Test
-	public void testPerformMoveCastlingWhenRookAlreadyMoved() throws InvalidMoveException {
+	public void testPerformValidMovePownJumpTwoOverOtherPiece() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(4, 0));
+		board.setPieceAt(Piece.WHITE_ROOK, new Coordinate(0, 5));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(7, 7));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(0, 6));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		boolean exceptionOtherPieceOnRoadPawn = false;
+
+		try {
+			boardManager.performMove(new Coordinate(4, 0), new Coordinate(4, 1));
+			boardManager.performMove(new Coordinate(0, 6), new Coordinate(0, 4));
+
+		} catch (OtherPieceOnRoadFromToException e) {
+			exceptionOtherPieceOnRoadPawn = true;
+		}
+		// then
+		assertTrue(exceptionOtherPieceOnRoadPawn);
+
+	}
+
+	@Test
+	public void testPerformMoveCastlingWhenRookAlreadyMovedFirstSide() throws InvalidMoveException {
 		// given
 		Board board = new Board();
 		board.setPieceAt(Piece.WHITE_KING, new Coordinate(4, 0));
@@ -161,6 +355,103 @@ public class BoardManagerTest {
 		// then
 		assertTrue(exceptionRookAlreadyMoved);
 
+	}
+
+	@Test
+	public void testPerformMoveCastlingWhenRookAlreadyMovedSecoundSide() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(4, 0));
+		board.setPieceAt(Piece.WHITE_ROOK, new Coordinate(0, 0));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(7, 7));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(0, 6));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		boolean exceptionRookAlreadyMoved = false;
+
+		try {
+			boardManager.performMove(new Coordinate(0, 0), new Coordinate(0, 1));
+			boardManager.performMove(new Coordinate(0, 6), new Coordinate(0, 5));
+			boardManager.performMove(new Coordinate(0, 1), new Coordinate(0, 0));
+			boardManager.performMove(new Coordinate(0, 5), new Coordinate(0, 4));
+			boardManager.performMove(new Coordinate(4, 0), new Coordinate(2, 0));
+		} catch (CastlingCantHappenCauseRookAlreadyMoved e) {
+			exceptionRookAlreadyMoved = true;
+		}
+		// then
+		assertTrue(exceptionRookAlreadyMoved);
+
+	}
+
+	@Test
+	public void testPerformMoveCastlingCheckPosition() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(4, 0));
+		board.setPieceAt(Piece.WHITE_ROOK, new Coordinate(7, 0));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(7, 7));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(0, 6));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		boolean moveException = false;
+
+		try {
+			boardManager.performMove(new Coordinate(4, 0), new Coordinate(6, 0));
+		} catch (InvalidMoveException e) {
+			moveException = true;
+		}
+		// then
+		assertFalse(moveException);
+		assertEquals(Piece.WHITE_KING, board.getPieceAt(new Coordinate(6, 0)));
+		assertEquals(Piece.WHITE_ROOK, board.getPieceAt(new Coordinate(5, 0)));
+	}
+
+	@Test
+	public void testPerformMoveCastlingCheckPositionWhenMoveInOtherSide() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(4, 0));
+		board.setPieceAt(Piece.WHITE_ROOK, new Coordinate(0, 0));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(7, 7));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(0, 6));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		boolean moveException = false;
+
+		try {
+			boardManager.performMove(new Coordinate(4, 0), new Coordinate(2, 0));
+		} catch (InvalidMoveException e) {
+			moveException = true;
+		}
+		// then
+		assertFalse(moveException);
+		assertEquals(Piece.WHITE_KING, board.getPieceAt(new Coordinate(2, 0)));
+		assertEquals(Piece.WHITE_ROOK, board.getPieceAt(new Coordinate(3, 0)));
+	}
+
+	@Test
+	public void testPerformMoveCastlingWhiteSide() throws InvalidMoveException {
+		// given
+		Board board = new Board();
+		board.setPieceAt(Piece.WHITE_KING, new Coordinate(4, 0));
+		board.setPieceAt(Piece.WHITE_ROOK, new Coordinate(0, 0));
+		board.setPieceAt(Piece.BLACK_KING, new Coordinate(7, 7));
+		board.setPieceAt(Piece.BLACK_PAWN, new Coordinate(0, 6));
+
+		// when
+		BoardManager boardManager = new BoardManager(board);
+		boolean moveException = false;
+
+		try {
+			boardManager.performMove(new Coordinate(4, 0), new Coordinate(2, 0));
+		} catch (InvalidMoveException e) {
+			moveException = true;
+		}
+		// then
+		assertFalse(moveException);
 	}
 
 	@Test

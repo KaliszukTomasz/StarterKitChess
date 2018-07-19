@@ -248,19 +248,15 @@ public class BoardManager {
 	private Move validateMove(Coordinate from, Coordinate to)
 			throws InvalidMoveException, KingInCheckException, InvalidColorMovedPiece {
 
-		if (!checkIfCoordsAreOnBoard(from) || !checkIfCoordsAreOnBoard(to)) {
-			throw new CoordinatesNotOnBoardException();
-		}
-		if (board.getPieceAt(from) == null) {
-			throw new NullPieceOnFromPlaceException();
-		}
+		checkIfCoordsAreOnBoard(from);
+		checkIfCoordsAreOnBoard(to);
+		checkIfPlaceFromIsNotEmpty(from, board);
+
 		Move myMove = new Move();
 		myMove.setFrom(from);
 		myMove.setTo(to);
 		myMove.setMovedPiece(getBoard().getPieceAt(from));
-		if (calculateNextMoveColor() != board.getPieceAt(from).getColor()) {
-			throw new InvalidColorMovedPiece();
-		}
+		checkItsGoodPieceColorToMove(from, board);
 		myMove.setType(checkWhatTypeOfMove(myMove, board));
 		PieceFactory pieceFactory = new PieceFactory();
 		PieceForm pieceForm = pieceFactory.getPieceForm(myMove.getFrom(), board);
@@ -286,6 +282,18 @@ public class BoardManager {
 		}
 	}
 
+	private void checkItsGoodPieceColorToMove(Coordinate from, Board board) throws InvalidColorMovedPiece {
+		if (calculateNextMoveColor() != board.getPieceAt(from).getColor()) {
+			throw new InvalidColorMovedPiece();
+		}
+	}
+
+	private void checkIfPlaceFromIsNotEmpty(Coordinate from, Board board) throws NullPieceOnFromPlaceException {
+		if (board.getPieceAt(from) == null) {
+			throw new NullPieceOnFromPlaceException();
+		}
+	}
+
 	private boolean checkIfCastlingMoveIsCorrect(Move myMove, Board board)
 			throws KingWillBeBeatenDuringCastling, NoKingOnBoardException, InvalidColorMovedPiece {
 
@@ -298,7 +306,7 @@ public class BoardManager {
 			if (kingInCheck) {
 				throw new KingWillBeBeatenDuringCastling();
 			} else {
-				myMove.setTo(new Coordinate(myMove.getFrom().getX() + directionX, myMove.getFrom().getY()));
+				myMove.setTo(new Coordinate(myMove.getFrom().getX() + 2 * directionX, myMove.getFrom().getY()));
 				this.board.getMoveHistory().add(myMove);
 				kingInCheck = willBeKingInCheckAfterThisMove(myMove);
 				this.board.getMoveHistory().remove(this.board.getMoveHistory().size() - 1);
@@ -312,11 +320,9 @@ public class BoardManager {
 		return false;
 	}
 
-	private boolean checkIfCoordsAreOnBoard(Coordinate cord) {
+	private void checkIfCoordsAreOnBoard(Coordinate cord) throws CoordinatesNotOnBoardException {
 		if (cord.getX() > 7 || cord.getY() > 7 || cord.getX() < 0 || cord.getY() < 0) {
-			return false;
-		} else {
-			return true;
+			throw new CoordinatesNotOnBoardException();
 		}
 	}
 
